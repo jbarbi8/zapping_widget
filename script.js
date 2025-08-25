@@ -62,7 +62,7 @@ function showClip(index) {
   const clip = clips[index];
   const parentDomain = "jbarbi8.github.io"; // ⚡ ton domaine
 
-  const iframeSrc = `https://clips.twitch.tv/embed?clip=${clip.slug}&parent=${parentDomain}&autoplay=true&muted=true`;
+  const iframeSrc = `https://clips.twitch.tv/embed?clip=${clip.slug}&parent=${parentDomain}&autoplay=true`;
 
   player.src = iframeSrc;
   titleEl.textContent = clip.title;
