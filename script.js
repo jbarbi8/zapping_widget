@@ -57,7 +57,7 @@ async function fetchClips() {
 // ✅ Affiche un clip dans l’iframe et met à jour les infos
 function showClip(index) {
   const clip = clips[index];
-  const parentDomain = "tonpseudo.github.io";
+  const parentDomain = "jbarbi8.github.io";
 
   const iframeSrc = `https://clips.twitch.tv/embed?clip=${clip.slug}&parent=${parentDomain}&autoplay=true`;
 
