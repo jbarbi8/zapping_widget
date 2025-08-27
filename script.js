@@ -1,6 +1,6 @@
 // ⚡ Mets ton identifiant et ton access token Twitch ici
 const clientId = "bxnw3quw14zii7a99fujyba9jbasza";
-const accessToken = "";
+const accessToken = "s5sfzf83vdpht2fekl2n0x54485715";
 const channelName = "Zelabe_"; // ⚡ ton pseudo Twitch
 
 let clips = [];
@@ -100,16 +100,3 @@ function startZapping() {
 
 // ⚡ Démarre (charge jusqu’à 100 clips)
 fetchClips(100);
-
-function showClip(slug) {
-  const iframe = document.getElementById("twitch-clip");
-  const flash = document.querySelector(".zapping-flash");
-
-  // ⚡ Animation flash
-  flash.classList.add("active");
-  setTimeout(() => flash.classList.remove("active"), 400);
-
-  // Mise à jour du clip
-  iframe.src = `https://clips.twitch.tv/embed?clip=${slug}&parent=localhost&autoplay=true&muted=false`;
-}
-
