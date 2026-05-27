@@ -1,6 +1,6 @@
 // ⚡ Mets ton identifiant et ton access token Twitch ici
 const clientId = "bxnw3quw14zii7a99fujyba9jbasza";
-const accessToken = "rxuejbftnmm730dbada0qdg8elz8wl";
+const accessToken = "fogzvzsleooam16agzu3dyls4ntp5y";
 const channelName = "Zelabe_"; // ⚡ ton pseudo Twitch
 
 let clips = [];
