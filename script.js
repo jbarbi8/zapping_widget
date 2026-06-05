@@ -1,10 +1,15 @@
-// ⚡ Mets ton identifiant et ton access token Twitch ici
 const clientId = "bxnw3quw14zii7a99fujyba9jbasza";
 const accessToken = "fogzvzsleooam16agzu3dyls4ntp5y";
-const channelName = "Zelabe_"; // ⚡ ton pseudo Twitch
+const channelName = "Zelabe_";
+
+const parentDomain = "jbarbi8.github.io";
+
+const MAX_CLIPS = 100;
+const DEFAULT_DURATION = 15000;
 
 let clips = [];
 let currentIndex = 0;
+let zappingTimeout = null;
 
 const player = document.getElementById("clip-player");
 const titleEl = document.getElementById("title");
@@ -12,91 +17,152 @@ const creatorEl = document.getElementById("creator");
 const dateEl = document.getElementById("date");
 const viewsEl = document.getElementById("views");
 
-// ✅ Récupère l’ID du broadcaster
 async function getBroadcasterId() {
-  const res = await fetch(`https://api.twitch.tv/helix/users?login=${channelName}`, {
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-      "Client-Id": clientId
+  const response = await fetch(
+    `https://api.twitch.tv/helix/users?login=${channelName}`,
+    {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Client-Id": clientId
+      }
     }
-  });
-  const data = await res.json();
-  return data.data[0]?.id;
+  );
+
+  const data = await response.json();
+
+  if (!response.ok || !data.data?.length) {
+    throw new Error("Impossible de récupérer l'ID du broadcaster.");
+  }
+
+  return data.data[0].id;
 }
 
-// ✅ Récupère les clips avec pagination (jusqu’à "limit")
-async function fetchClips(limit = 100) {
+async function fetchClips(limit = MAX_CLIPS) {
   try {
     const broadcasterId = await getBroadcasterId();
+
     let cursor = null;
     let allClips = [];
 
-    do {
+    while (allClips.length < limit) {
       const url = new URL("https://api.twitch.tv/helix/clips");
+
       url.searchParams.set("broadcaster_id", broadcasterId);
       url.searchParams.set("first", "20");
-      if (cursor) url.searchParams.set("after", cursor);
 
-      const res = await fetch(url, {
+      if (cursor) {
+        url.searchParams.set("after", cursor);
+      }
+
+      const response = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${accessToken}`,
           "Client-Id": clientId
         }
       });
-      const data = await res.json();
 
-      allClips = allClips.concat(data.data);
+      const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors de la récupération des clips.");
+      }
+
+      allClips = allClips.concat(data.data || []);
       cursor = data.pagination?.cursor || null;
-    } while (cursor && allClips.length < limit);
 
-    clips = allClips.map(c => ({
-      slug: c.id,
-      title: c.title,
-      creator: c.creator_name,
-      date: new Date(c.created_at).toLocaleDateString("fr-FR"),
-      views: c.view_count,
-      duration: c.duration * 1000 // en millisecondes
-    }));
-
-    if (clips.length > 0) {
-      currentIndex = 0;
-      startZapping();
+      if (!cursor) break;
     }
-  } catch (err) {
-    console.error("Erreur API Twitch :", err);
+
+    clips = shuffleArray(allClips.slice(0, limit)).map(formatClip);
+
+    if (!clips.length) {
+      showError("Aucun clip trouvé.");
+      return;
+    }
+
+    currentIndex = 0;
+    startZapping();
+  } catch (error) {
+    console.error("Erreur API Twitch :", error);
+    showError("Impossible de charger les clips Twitch.");
   }
 }
 
-// ✅ Affiche un clip dans l’iframe et met à jour les infos
+function formatClip(clip) {
+  return {
+    slug: clip.id,
+    title: clip.title || "Clip sans titre",
+    creator: clip.creator_name || "Inconnu",
+    date: clip.created_at
+      ? new Date(clip.created_at).toLocaleDateString("fr-FR")
+      : "Date inconnue",
+    views: clip.view_count ?? 0,
+    duration: clip.duration ? clip.duration * 1000 : DEFAULT_DURATION
+  };
+}
+
+function shuffleArray(array) {
+  const shuffled = [...array];
+
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const randomIndex = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[i]];
+  }
+
+  return shuffled;
+}
+
 function showClip(index) {
   const clip = clips[index];
-  const parentDomain = "jbarbi8.github.io"; // ⚡ ton domaine GitHub Pages
 
-  const iframeSrc = `https://clips.twitch.tv/embed?clip=${clip.slug}&parent=${parentDomain}&autoplay=true`;
+  const iframeSrc =
+    `https://clips.twitch.tv/embed` +
+    `?clip=${encodeURIComponent(clip.slug)}` +
+    `&parent=${encodeURIComponent(parentDomain)}` +
+    `&autoplay=true` +
+    `&muted=false`;
 
   player.src = iframeSrc;
+
   titleEl.textContent = clip.title;
-  creatorEl.textContent = "Créateur : " + clip.creator;
-  dateEl.textContent = "Date : " + clip.date;
-  viewsEl.textContent = "Vues : " + clip.views;
+  creatorEl.textContent = `Créateur : ${clip.creator}`;
+  dateEl.textContent = `Date : ${clip.date}`;
+  viewsEl.textContent = `Vues : ${clip.views}`;
 }
 
-// ✅ Lance le zapping avec durée variable
 function startZapping() {
-  function playClip(index) {
-    showClip(index);
+  stopZapping();
 
-    const nextIndex = (index + 1) % clips.length;
-    const duration = clips[index].duration || 15000; // défaut 15s
+  function playCurrentClip() {
+    showClip(currentIndex);
 
-    setTimeout(() => {
-      playClip(nextIndex);
-    }, duration);
+    const duration = clips[currentIndex].duration || DEFAULT_DURATION;
+
+    currentIndex++;
+
+    if (currentIndex >= clips.length) {
+      clips = shuffleArray(clips);
+      currentIndex = 0;
+    }
+
+    zappingTimeout = setTimeout(playCurrentClip, duration);
   }
 
-  playClip(currentIndex);
+  playCurrentClip();
 }
 
-// ⚡ Démarre (charge jusqu’à 100 clips)
-fetchClips(100);
+function stopZapping() {
+  if (zappingTimeout) {
+    clearTimeout(zappingTimeout);
+    zappingTimeout = null;
+  }
+}
+
+function showError(message) {
+  titleEl.textContent = message;
+  creatorEl.textContent = "Créateur : -";
+  dateEl.textContent = "Date : -";
+  viewsEl.textContent = "Vues : -";
+}
+
+fetchClips();
