@@ -1,56 +1,106 @@
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   width: 1277px;
   height: 841px;
-  background: #111;
-  color: white;
   overflow: hidden;
+  background: #111;
+  color: #FFFEF8;
   font-family: "DM Sans", sans-serif;
 }
 
-.noise::before {
-content: '';
-position: absolute;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-background: url("data:image/svg+xml,%3Csvg xmlns='http://w3.org/2000/svg' width='100%' height='100%'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)' opacity='0.3'/%3E%3C/svg%3E");
-pointer-events: none;
+#widget {
+  width: 1277px;
+  height: 841px;
+  position: relative;
+  overflow: hidden;
+  background: #111;
 }
 
 #video-container {
   width: 1277px;
-  height: 712.86px;
+  height: 713px;
+  position: relative;
+  background: #000;
+  overflow: hidden;
 }
 
-iframe {
+#clip-player {
   width: 1277px;
-  height: 712.86px;
-  border: none;
+  height: 713px;
+  border: 0;
+  display: block;
 }
 
 #info-container {
   width: 1277px;
   height: 128px;
   background: #FFA4BE;
-  padding: 10px 20px;
-  box-sizing: border-box;
-
+  padding: 22px 28px;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
 #title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 2px;
+  font-family: "obviously", "DM Sans", sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.1;
   color: #FFFEF8;
-  font-family: "obviously", sans-serif;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-#creator, #date, #views {
+#meta {
+  display: flex;
+  gap: 22px;
+  align-items: center;
   font-size: 18px;
+  font-weight: 500;
   color: #FFFEF8;
+}
+
+#sound-button {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 230px;
+  height: 54px;
+  border: 0;
+  border-radius: 999px;
+  background: #FFFEF8;
+  color: #111;
+  font-family: "DM Sans", sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+#sound-button.is-hidden {
+  display: none;
+}
+
+#loader {
+  position: absolute;
+  left: 28px;
+  bottom: 24px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #FFFEF8;
+  font-size: 14px;
+  font-weight: 700;
+  z-index: 5;
+}
+
+#loader.is-hidden {
+  display: none;
 }
