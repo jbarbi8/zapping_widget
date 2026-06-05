@@ -10,17 +10,12 @@ const CONFIG = {
   extraDelay: 1200,
 
   autoplay: true,
-  muted: false,
-
-  // Twitch ne garantit pas ce paramètre pour les clips.
-  // Je le laisse en tentative, mais ce n’est pas officiel.
-  preferredQuality: "chunked"
+  muted: false
 };
 
 let clips = [];
 let currentIndex = 0;
 let zappingTimer = null;
-let soundWasActivated = false;
 
 const player = document.getElementById("clip-player");
 const titleEl = document.getElementById("title");
@@ -28,17 +23,6 @@ const creatorEl = document.getElementById("creator");
 const dateEl = document.getElementById("date");
 const viewsEl = document.getElementById("views");
 const loaderEl = document.getElementById("loader");
-const soundButton = document.getElementById("sound-button");
-
-soundButton.addEventListener("click", () => {
-  soundWasActivated = true;
-  soundButton.classList.add("is-hidden");
-
-  if (clips.length > 0) {
-    showClip(currentIndex, false);
-    startZapping();
-  }
-});
 
 init();
 
@@ -58,13 +42,12 @@ async function init() {
 
     hideLoader();
 
-    // Important :
-    // On attend le clic pour maximiser les chances d’avoir le son.
-    // Sans interaction utilisateur, Twitch peut couper le son automatiquement.
-    showClip(0, true);
+    currentIndex = 0;
+    showClip(currentIndex);
+    startZapping();
   } catch (error) {
-    console.error(error);
-    showError("Impossible de charger les clips Twitch.");
+    console.error("Erreur Twitch :", error);
+    showError("Impossible de charger les clips.");
   }
 }
 
@@ -134,26 +117,20 @@ function formatClip(clip) {
     views: clip.view_count ?? 0,
     duration: clip.duration
       ? Math.ceil(clip.duration * 1000) + CONFIG.extraDelay
-      : CONFIG.defaultDuration,
-    embedUrl: clip.embed_url
+      : CONFIG.defaultDuration
   };
 }
 
-function showClip(index, mutedFallback = false) {
+function showClip(index) {
   const clip = clips[index];
   if (!clip) return;
 
-  const mutedValue = mutedFallback ? "true" : String(CONFIG.muted);
-
   const url = new URL("https://clips.twitch.tv/embed");
+
   url.searchParams.set("clip", clip.id);
   url.searchParams.set("parent", CONFIG.parentDomain);
   url.searchParams.set("autoplay", String(CONFIG.autoplay));
-  url.searchParams.set("muted", mutedValue);
-  url.searchParams.set("preload", "auto");
-
-  // Non officiel pour les clips, mais ne casse normalement rien.
-  url.searchParams.set("quality", CONFIG.preferredQuality);
+  url.searchParams.set("muted", String(CONFIG.muted));
 
   player.src = url.toString();
 
@@ -177,7 +154,7 @@ function startZapping() {
       currentIndex = 0;
     }
 
-    showClip(currentIndex, false);
+    showClip(currentIndex);
     startZapping();
   }, duration);
 }
@@ -215,7 +192,6 @@ function hideLoader() {
 
 function showError(message) {
   hideLoader();
-  soundButton.classList.add("is-hidden");
 
   titleEl.textContent = message;
   creatorEl.textContent = "Créateur : -";
