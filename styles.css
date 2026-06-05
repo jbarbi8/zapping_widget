@@ -7,7 +7,7 @@ body {
   width: 1277px;
   height: 841px;
   overflow: hidden;
-  background: #111;
+  background: transparent;
   color: #FFFEF8;
   font-family: "DM Sans", sans-serif;
 }
@@ -15,15 +15,14 @@ body {
 #widget {
   width: 1277px;
   height: 841px;
-  position: relative;
   overflow: hidden;
   background: #111;
 }
 
 #video-container {
+  position: relative;
   width: 1277px;
   height: 713px;
-  position: relative;
   background: #000;
   overflow: hidden;
 }
@@ -31,27 +30,31 @@ body {
 #clip-player {
   width: 1277px;
   height: 713px;
-  border: 0;
+  border: none;
   display: block;
 }
 
 #info-container {
   width: 1277px;
   height: 128px;
-  background: #FFA4BE;
   padding: 22px 28px;
+  background: #FFA4BE;
+
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
 #title {
+  margin-bottom: 8px;
+
   font-family: "obviously", "DM Sans", sans-serif;
   font-size: 28px;
   font-weight: 900;
   line-height: 1.1;
+
   color: #FFFEF8;
-  margin-bottom: 8px;
+
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -61,44 +64,31 @@ body {
   display: flex;
   gap: 22px;
   align-items: center;
-  font-size: 18px;
-  font-weight: 500;
+  flex-wrap: wrap;
+
+  font-family: "obviously", "DM Sans", sans-serif;
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+
   color: #FFFEF8;
-}
-
-#sound-button {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 230px;
-  height: 54px;
-  border: 0;
-  border-radius: 999px;
-  background: #FFFEF8;
-  color: #111;
-  font-family: "DM Sans", sans-serif;
-  font-size: 18px;
-  font-weight: 800;
-  cursor: pointer;
-  z-index: 10;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-}
-
-#sound-button.is-hidden {
-  display: none;
 }
 
 #loader {
   position: absolute;
-  left: 28px;
-  bottom: 24px;
-  padding: 10px 14px;
+  left: 24px;
+  bottom: 22px;
+  z-index: 5;
+
+  padding: 9px 14px;
   border-radius: 999px;
+
   background: rgba(0, 0, 0, 0.65);
   color: #FFFEF8;
+
   font-size: 14px;
   font-weight: 700;
-  z-index: 5;
 }
 
 #loader.is-hidden {
