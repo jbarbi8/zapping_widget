@@ -115,14 +115,12 @@ function shuffleArray(array) {
 function showClip(index) {
   const clip = clips[index];
 
-  const iframeSrc =
+  player.src =
     `https://clips.twitch.tv/embed` +
-    `?clip=${encodeURIComponent(clip.slug)}` +
-    `&parent=${encodeURIComponent(parentDomain)}` +
+    `?clip=${clip.slug}` +
+    `&parent=${parentDomain}` +
     `&autoplay=true` +
     `&muted=false`;
-
-  player.src = iframeSrc;
 
   titleEl.textContent = clip.title;
   creatorEl.textContent = `Créateur : ${clip.creator}`;
