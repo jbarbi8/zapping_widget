@@ -1,104 +1,192 @@
-const clientId = "bxnw3quw14zii7a99fujyba9jbasza";
-const accessToken = "fogzvzsleooam16agzu3dyls4ntp5y";
-const channelName = "Zelabe_";
+const CONFIG = {
+  clientId: "bxnw3quw14zii7a99fujyba9jbasza",
+  accessToken: "fogzvzsleooam16agzu3dyls4ntp5y",
 
-const parentDomain = "jbarbi8.github.io";
+  channelName: "Zelabe_",
+  parentDomain: "jbarbi8.github.io",
 
-const MAX_CLIPS = 100;
-const DEFAULT_DURATION = 15000;
+  maxClips: 100,
+  defaultDuration: 15000,
+  extraDelay: 1200,
+
+  autoplay: true,
+  muted: false,
+
+  // Twitch ne garantit pas ce paramètre pour les clips.
+  // Je le laisse en tentative, mais ce n’est pas officiel.
+  preferredQuality: "chunked"
+};
 
 let clips = [];
 let currentIndex = 0;
-let zappingTimeout = null;
+let zappingTimer = null;
+let soundWasActivated = false;
 
 const player = document.getElementById("clip-player");
 const titleEl = document.getElementById("title");
 const creatorEl = document.getElementById("creator");
 const dateEl = document.getElementById("date");
 const viewsEl = document.getElementById("views");
+const loaderEl = document.getElementById("loader");
+const soundButton = document.getElementById("sound-button");
 
-async function getBroadcasterId() {
-  const response = await fetch(
-    `https://api.twitch.tv/helix/users?login=${channelName}`,
-    {
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Client-Id": clientId
-      }
-    }
-  );
+soundButton.addEventListener("click", () => {
+  soundWasActivated = true;
+  soundButton.classList.add("is-hidden");
 
-  const data = await response.json();
-
-  if (!response.ok || !data.data?.length) {
-    throw new Error("Impossible de récupérer l'ID du broadcaster.");
+  if (clips.length > 0) {
+    showClip(currentIndex, false);
+    startZapping();
   }
+});
 
-  return data.data[0].id;
-}
+init();
 
-async function fetchClips(limit = MAX_CLIPS) {
+async function init() {
   try {
+    showLoader("Chargement des clips...");
+
     const broadcasterId = await getBroadcasterId();
+    const rawClips = await fetchClips(broadcasterId, CONFIG.maxClips);
 
-    let cursor = null;
-    let allClips = [];
-
-    while (allClips.length < limit) {
-      const url = new URL("https://api.twitch.tv/helix/clips");
-
-      url.searchParams.set("broadcaster_id", broadcasterId);
-      url.searchParams.set("first", "20");
-
-      if (cursor) {
-        url.searchParams.set("after", cursor);
-      }
-
-      const response = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Client-Id": clientId
-        }
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Erreur lors de la récupération des clips.");
-      }
-
-      allClips = allClips.concat(data.data || []);
-      cursor = data.pagination?.cursor || null;
-
-      if (!cursor) break;
-    }
-
-    clips = shuffleArray(allClips.slice(0, limit)).map(formatClip);
+    clips = shuffleArray(rawClips).map(formatClip);
 
     if (!clips.length) {
       showError("Aucun clip trouvé.");
       return;
     }
 
-    currentIndex = 0;
-    startZapping();
+    hideLoader();
+
+    // Important :
+    // On attend le clic pour maximiser les chances d’avoir le son.
+    // Sans interaction utilisateur, Twitch peut couper le son automatiquement.
+    showClip(0, true);
   } catch (error) {
-    console.error("Erreur API Twitch :", error);
+    console.error(error);
     showError("Impossible de charger les clips Twitch.");
   }
 }
 
+async function getBroadcasterId() {
+  const url = new URL("https://api.twitch.tv/helix/users");
+  url.searchParams.set("login", CONFIG.channelName);
+
+  const data = await twitchFetch(url);
+
+  if (!data.data || !data.data.length) {
+    throw new Error("Broadcaster introuvable.");
+  }
+
+  return data.data[0].id;
+}
+
+async function fetchClips(broadcasterId, limit) {
+  let allClips = [];
+  let cursor = null;
+
+  while (allClips.length < limit) {
+    const url = new URL("https://api.twitch.tv/helix/clips");
+
+    url.searchParams.set("broadcaster_id", broadcasterId);
+    url.searchParams.set("first", "100");
+
+    if (cursor) {
+      url.searchParams.set("after", cursor);
+    }
+
+    const data = await twitchFetch(url);
+
+    allClips = allClips.concat(data.data || []);
+    cursor = data.pagination?.cursor || null;
+
+    if (!cursor) break;
+  }
+
+  return allClips.slice(0, limit);
+}
+
+async function twitchFetch(url) {
+  const response = await fetch(url, {
+    headers: {
+      "Authorization": `Bearer ${CONFIG.accessToken}`,
+      "Client-Id": CONFIG.clientId
+    }
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Erreur API Twitch.");
+  }
+
+  return data;
+}
+
 function formatClip(clip) {
   return {
-    slug: clip.id,
+    id: clip.id,
     title: clip.title || "Clip sans titre",
     creator: clip.creator_name || "Inconnu",
     date: clip.created_at
       ? new Date(clip.created_at).toLocaleDateString("fr-FR")
       : "Date inconnue",
     views: clip.view_count ?? 0,
-    duration: clip.duration ? clip.duration * 1000 : DEFAULT_DURATION
+    duration: clip.duration
+      ? Math.ceil(clip.duration * 1000) + CONFIG.extraDelay
+      : CONFIG.defaultDuration,
+    embedUrl: clip.embed_url
   };
+}
+
+function showClip(index, mutedFallback = false) {
+  const clip = clips[index];
+  if (!clip) return;
+
+  const mutedValue = mutedFallback ? "true" : String(CONFIG.muted);
+
+  const url = new URL("https://clips.twitch.tv/embed");
+  url.searchParams.set("clip", clip.id);
+  url.searchParams.set("parent", CONFIG.parentDomain);
+  url.searchParams.set("autoplay", String(CONFIG.autoplay));
+  url.searchParams.set("muted", mutedValue);
+  url.searchParams.set("preload", "auto");
+
+  // Non officiel pour les clips, mais ne casse normalement rien.
+  url.searchParams.set("quality", CONFIG.preferredQuality);
+
+  player.src = url.toString();
+
+  titleEl.textContent = clip.title;
+  creatorEl.textContent = `Créateur : ${clip.creator}`;
+  dateEl.textContent = `Date : ${clip.date}`;
+  viewsEl.textContent = `Vues : ${formatViews(clip.views)}`;
+}
+
+function startZapping() {
+  stopZapping();
+
+  const currentClip = clips[currentIndex];
+  const duration = currentClip?.duration || CONFIG.defaultDuration;
+
+  zappingTimer = setTimeout(() => {
+    currentIndex++;
+
+    if (currentIndex >= clips.length) {
+      clips = shuffleArray(clips);
+      currentIndex = 0;
+    }
+
+    showClip(currentIndex, false);
+    startZapping();
+  }, duration);
+}
+
+function stopZapping() {
+  if (zappingTimer) {
+    clearTimeout(zappingTimer);
+    zappingTimer = null;
+  }
 }
 
 function shuffleArray(array) {
@@ -112,55 +200,25 @@ function shuffleArray(array) {
   return shuffled;
 }
 
-function showClip(index) {
-  const clip = clips[index];
-
-  player.src =
-    `https://clips.twitch.tv/embed` +
-    `?clip=${clip.slug}` +
-    `&parent=${parentDomain}` +
-    `&autoplay=true` +
-    `&muted=false`;
-
-  titleEl.textContent = clip.title;
-  creatorEl.textContent = `Créateur : ${clip.creator}`;
-  dateEl.textContent = `Date : ${clip.date}`;
-  viewsEl.textContent = `Vues : ${clip.views}`;
+function formatViews(views) {
+  return new Intl.NumberFormat("fr-FR").format(views);
 }
 
-function startZapping() {
-  stopZapping();
-
-  function playCurrentClip() {
-    showClip(currentIndex);
-
-    const duration = clips[currentIndex].duration || DEFAULT_DURATION;
-
-    currentIndex++;
-
-    if (currentIndex >= clips.length) {
-      clips = shuffleArray(clips);
-      currentIndex = 0;
-    }
-
-    zappingTimeout = setTimeout(playCurrentClip, duration);
-  }
-
-  playCurrentClip();
+function showLoader(message) {
+  loaderEl.textContent = message;
+  loaderEl.classList.remove("is-hidden");
 }
 
-function stopZapping() {
-  if (zappingTimeout) {
-    clearTimeout(zappingTimeout);
-    zappingTimeout = null;
-  }
+function hideLoader() {
+  loaderEl.classList.add("is-hidden");
 }
 
 function showError(message) {
+  hideLoader();
+  soundButton.classList.add("is-hidden");
+
   titleEl.textContent = message;
   creatorEl.textContent = "Créateur : -";
   dateEl.textContent = "Date : -";
   viewsEl.textContent = "Vues : -";
 }
-
-fetchClips();
